@@ -1,0 +1,290 @@
+4.Symbol table 
+
+
+
+#include <iostream>
+#include <unordered_map>
+#include <string>
+#include <iomanip>
+using namespace std;
+struct SymbolInfo {
+string label;
+string datatype;
+string varName;
+string value;
+string address;
+SymbolInfo(string lbl = "", string dt = "", string vn = "", string val = "", string addr = "")
+: label(lbl), datatype(dt), varName(vn), value(val), address(addr) {}
+};
+class SymbolTable {
+private:
+unordered_map<string, SymbolInfo> table;
+int baseAddress;
+int addressIncrement;
+public:
+SymbolTable(int startAddress) {
+baseAddress = startAddress;
+addressIncrement = 4;
+}
+void createSymbol(const string& label, const string& datatype, const string& varName, const string& value) {
+if (table.find(varName) != table.end()) {
+cout << "Error: Variable '" << varName << "' already exists." << endl;
+} else {
+string address = "0x" + to_string(baseAddress);
+table[varName] = SymbolInfo(label, datatype, varName, value, address);
+baseAddress += addressIncrement;
+cout << "Symbol '" << varName << "' created.\n";
+}
+}
+void searchSymbol(const string& varName) {
+if (table.find(varName) != table.end()) {
+SymbolInfo& sym = table[varName];
+cout << "\nSymbol Found: \n";
+cout << "Label: " << sym.label << ", Datatype: " << sym.datatype << ", Variable: " << sym.varName
+<< ", Value: " << sym.value << ", Address: " << sym.address << endl;
+} else {
+cout << "Error: Variable '" << varName << "' not found.\n";
+}
+}
+void deleteSymbol(const string& varName) {
+if (table.erase(varName)) {
+cout << "Symbol '" << varName << "' deleted.\n";
+} else {
+cout << "Error: Variable '" << varName << "' not found.\n";
+}
+}
+void displayTable() {
+cout << "\nSymbol Table Contents:\n";
+cout << setw(10) << "Label" << setw(15) << "Datatype" << setw(15) << "Variable"
+<< setw(10) << "Value" << setw(10) << "Address" << endl;
+cout << "--------------------------------------------------------------\n";
+for (const auto& entry : table) {
+const SymbolInfo& sym = entry.second;
+cout << setw(10) << sym.label << setw(15) << sym.datatype << setw(15) << sym.varName
+<< setw(10) << sym.value << setw(10) << sym.address << endl;
+}
+cout << "--------------------------------------------------------------\n";
+}
+};
+int main() {
+int startAddress;
+cout << "Enter the starting memory address (in decimal): ";
+cin >> startAddress;
+SymbolTable symTable(startAddress);
+string label, datatype, varName, value;
+int choice;
+do {
+cout << "\nMenu:\n";
+cout << "1. Create a new symbol\n";
+cout << "2. Search for a symbol\n";
+cout << "3. Delete a symbol\n";
+cout << "4. Display symbol table\n";
+cout << "5. Exit\n";
+cout << "Enter your choice: ";
+cin >> choice;
+switch (choice) {
+case 1:
+cout << "Enter label: ";
+cin >> label;
+cout << "Enter data type (int, float, etc.): ";
+cin >> datatype;
+cout << "Enter variable name: ";
+cin >> varName;
+cout << "Enter value: ";
+cin >> value;
+symTable.createSymbol(label, datatype, varName, value);
+break;
+case 2:
+cout << "Enter variable name to search: ";
+cin >> varName;
+symTable.searchSymbol(varName);
+break;
+case 3:
+cout << "Enter variable name to delete: ";
+cin >> varName;
+symTable.deleteSymbol(varName);
+break;
+case 4:
+symTable.displayTable();
+break;
+case 5:
+cout << "Exiting...\n";
+break;
+default:
+cout << "Invalid choice! Please try again.\n";
+break;
+}
+} while (choice != 5);
+return 0;
+}
+
+
+
+
+--------------------------------------------------------------------------------------------------------------------
+5.Predictive parsing
+
+
+
+#include <iostream>
+#include <stack>
+#include <map>
+#include <string>
+#include <iomanip>
+using namespace std;
+class PredictiveParser {
+private:
+map<string, map<char, string>> parsingTable;
+stack<string> parseStack;
+void displayStack(stack<string> s) {
+stack<string> temp;
+while (!s.empty()) {
+temp.push(s.top());
+s.pop();
+}
+while (!temp.empty()) {
+cout << temp.top() << " ";
+temp.pop();
+}
+}
+void displayParsingTable() {
+cout << "\nPredictive Parsing Table:" << endl;
+cout << setw(10) << "NT/T";
+map<char, bool> terminals;
+for (auto& row : parsingTable) {
+for (auto& entry : row.second) {
+terminals[entry.first] = true;
+}
+}
+for (auto& t : terminals) {
+cout << setw(10) << t.first;
+}
+cout << endl;
+cout << string(10 + terminals.size() * 10, '-') << endl;
+for (auto& row : parsingTable) {
+cout << setw(10) << row.first;
+for (auto& t : terminals) {
+string production = parsingTable[row.first][t.first];
+if (production == "") production = " ";
+cout << setw(10) << production;
+}
+cout << endl;
+cout << string(10 + terminals.size() * 10, '-') << endl;
+}
+}
+public:
+PredictiveParser() {
+parsingTable["E"]['i'] = "T E'";
+parsingTable["E"]['('] = "T E'";
+parsingTable["E'"]['+'] = "+ T E'";
+parsingTable["E'"]['$'] = "";
+parsingTable["T"]['i'] = "F T'";
+parsingTable["T"]['('] = "F T'";
+parsingTable["T'"]['*'] = " F T'";
+parsingTable["T'"]['+'] = "";
+parsingTable["T'"]['$'] = "";
+parsingTable["F"]['i'] = "i";
+parsingTable["F"]['('] = "( E )";
+}
+bool parse(string input) {
+input += "$";
+parseStack.push("$");
+parseStack.push("E");
+displayParsingTable();
+int i = 0;
+while (!parseStack.empty()) {
+cout << "Stack: ";
+displayStack(parseStack);
+cout << " | Input: " << input.substr(i) << endl;
+string top = parseStack.top();
+parseStack.pop();
+if (top.size() == 1 && top[0] == input[i]) {
+cout << "Match: " << input[i] << endl;
+i++;
+} else if (isupper(top[0])) {
+if (parsingTable[top][input[i]] != "") {
+string production = parsingTable[top][input[i]];
+cout << "Expand: " << top << " -> " << production << endl;
+for (int j = production.size() - 1; j >= 0; j--) {
+if (production[j] != ' ')
+parseStack.push(string(1, production[j]));
+}
+} else {
+cout << "Error: No rule to expand " << top << " with input " << input[i] << endl;
+return false;
+}
+} else {
+cout << "Error: Unexpected symbol " << top << endl;
+return false;
+}
+}
+return input[i] == '$';
+}
+};
+int main() {
+string input;
+cout << "Enter the string to parse: ";
+cin >> input;
+PredictiveParser parser;
+if (parser.parse(input)) {
+cout << "String is successfully parsed." << endl;
+} else {
+cout << "String is rejected." << endl;
+}
+return 0;
+}
+
+------------------------------------------------------------------------------------------------------------------------------------
+6.Shift reduce parser
+
+
+#include <stdio.h>
+#include <string.h>
+char stack[20], input[20];
+int top = -1, i = 0;
+void push(char c) {
+stack[++top] = c;
+}
+void pop() {
+stack[top--] = '\0';
+}
+void display() {
+printf("\nStack: %s", stack);
+printf("\tInput: %s", input + i);
+}
+int main() {
+printf("Enter the input string: ");
+scanf("%s", input);
+printf("\nGrammar: S -> AB, A -> a, B -> b");
+printf("\nParsing steps:\n");
+while (input[i] != '\0') {
+push(input[i]);
+i++;
+display();
+if (stack[top] == 'a') {
+pop();
+push('A');
+printf("\tAction: A -> a");
+}
+display();
+if (stack[top] == 'b') {
+pop();
+push('B');
+printf("\tAction: B -> b");
+}
+display();
+if (top > 0 && stack[top] == 'B' && stack[top - 1] == 'A') {
+pop();
+pop();
+push('S');
+printf("\tAction: S -> AB");
+}
+display();
+}
+if (top == 0 && stack[top] == 'S') {
+printf("\n\nString successfully parsed.\n");
+} else {
+printf("\n\nError: Input string not parsed.\n");
+}
+return 0;
+}
